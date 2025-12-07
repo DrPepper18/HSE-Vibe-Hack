@@ -4,8 +4,9 @@ from sqlalchemy import *
 
 Base = declarative_base()
 
-class User(Base):
-    __tablename__ = "users"
+class Task(Base):
+    __tablename__ = "tasks"
     id = Column(BigInteger(), primary_key=True, autoincrement=True)
-    name = Column(String())
-    is_admin = Column(Boolean())
+    info = Column(String())
+    date = Column(Date())
+    is_completed = Column(Boolean())

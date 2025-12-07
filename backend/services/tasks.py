@@ -1,5 +1,10 @@
-import requests
+from models.models import *
+from models.database import async_session_maker
+import sqlalchemy as db
 from config import *
+import requests
+from datetime import date
+
 
 def get_tasks(text: str): 
     prompt = (
@@ -24,3 +29,36 @@ def get_tasks(text: str):
     result = resp.json()
     answer = result["result"]["alternatives"][0]["message"]["text"].strip()
     return answer[4:-4]
+
+
+async def add_new_tasks(tasks: list):
+    async with async_session_maker() as session:
+        for task in tasks:
+            new_task = Task(
+                info=task,
+                date=date.today(),
+                is_completed=False
+            )
+            session.add(new_task)
+        await session.commit()
+
+
+async def query_all_tasks_for_today():
+    async with async_session_maker() as session:
+        query_select = db.select(db.func.count(Task.id)).where(
+            (Task.date == date.today()) &
+            (Task.is_completed == True)
+        )
+        result = await session.execute(query_select)
+        user_data = result.scalar()
+        return user_data
+
+async def query_change_status(id: int):
+    async with async_session_maker() as session:
+        stmt = (
+            update(Task)
+            .where(Task.id == id)
+            .values(is_completed=True)
+        )  
+        await session.execute(stmt)
+        await session.commit()
