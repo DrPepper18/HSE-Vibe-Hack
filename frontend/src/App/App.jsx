@@ -120,6 +120,12 @@ export default function App() {
   const totalTasks = useMemo(() => todayTasks.length, [todayTasks]);
   const overallCompleted = useMemo(() => tasks.filter(task => task.completed).length, [tasks]);
   const overallTotal = useMemo(() => tasks.length, [tasks]);
+  
+  const todayProgress = useMemo(() => {
+    if (totalTasks === 0) return 0;
+    return Math.round((completedTasks / totalTasks) * 100);
+  }, [completedTasks, totalTasks]);
+
   const getCalendarTasks = useCallback((date) => tasks.filter(task => task.date === date.toDateString()), [tasks]);
 
   const formatDate = useCallback((date) => date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' }), []);
@@ -369,12 +375,12 @@ export default function App() {
           <motion.div
             className="h-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
             initial={{ width: 0 }}
-            animate={{ width: `${energyLevel}%` }}
+           animate={{ width: `${todayProgress}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </div>
         <div className="text-center mt-2 text-sm text-gray-600">
-          {completedTasks} из {totalTasks} задач выполнено! Ты как тот чувак из мема: "Я же говорил, что справлюсь!" 😎
+          {completedTasks} из {totalTasks} задач выполнено ({todayProgress}%)! Ты как тот чувак из мема: "Я же говорил, что справлюсь!" 😎
         </div>
       </motion.div>
 
@@ -466,7 +472,7 @@ export default function App() {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="p-6 border-b-4 border-pink-200 bg-gradient-to-r from-pink-50 to-red-50">
+          <div className="rounded-t-[10px] p-6 border-b-4 border-pink-200 bg-gradient-to-r from-pink-50 to-red-50">
             <h2 className="text-2xl font-bold text-gray-900 flex items-center">
               <Coffee className="w-6 h-6 mr-2 text-brown-600" />
               ЗАДАЧИ НА СЕГОДНЯ
@@ -478,7 +484,7 @@ export default function App() {
             )}
           </div>
 
-          <div className="p-6 space-y-3 max-h-80 overflow-y-auto bg-gradient-to-b from-white to-pink-50">
+          <div className="rounded-b-[10px] p-6 space-y-3 max-h-80 overflow-y-auto bg-gradient-to-b from-white to-pink-50">
             {todayTasks.length === 0 ? (
               <div className="text-center py-8">
                 <motion.div
@@ -549,7 +555,10 @@ export default function App() {
 
   // Tasks Page
   const TasksPage = () => {
-    const overallProgress = overallTotal > 0 ? Math.round((overallCompleted / overallTotal) * 100) : 0;
+    const overallProgress = useMemo(() => {
+      if (overallTotal === 0) return 0;
+      return Math.round((overallCompleted / overallTotal) * 100);
+    }, [overallCompleted, overallTotal]);
 
     return (
       <motion.div
@@ -606,7 +615,7 @@ export default function App() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="p-6 border-b-4 border-orange-200 bg-gradient-to-r from-orange-50 to-red-50">
+          <div className="rounded-t-[10px] p-6 border-b-4 border-orange-200 bg-gradient-to-r from-orange-50 to-red-50">
             <h2 className="text-2xl font-bold text-gray-900">ВСЕ ТВОИ ЗАДАЧИ</h2>
             <p className="text-sm text-gray-600 mt-1">Каждая галочка - это шаг к величию! ✨</p>
           </div>
@@ -836,7 +845,7 @@ export default function App() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <div className="p-6 border-b-4 border-pink-200 bg-gradient-to-r from-pink-50 to-red-50">
+          <div className="rounded-t-[10px] p-6 border-b-4 border-pink-200 bg-gradient-to-r from-pink-50 to-red-50">
             <h2 className="text-2xl font-bold text-gray-900">БЛИЖАЙШИЕ ЗАДАЧИ</h2>
             <p className="text-sm text-gray-600 mt-1">Не откладывай на потом то, что можно сделать сейчас! ⚡</p>
           </div>
