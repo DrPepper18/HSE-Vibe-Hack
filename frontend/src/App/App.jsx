@@ -372,7 +372,7 @@ export default function App() {
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <Brain className="w-6 h-6 text-orange-500" />
+              <img src={orangeIcon} alt="Logo" className="w-8 h-8" />
             </motion.div>
             <button
               onClick={() => setCurrentPage('home')}
