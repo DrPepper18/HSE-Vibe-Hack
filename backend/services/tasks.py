@@ -43,7 +43,7 @@ async def add_new_tasks(tasks: list):
         await session.commit()
 
 
-async def query_all_tasks_for_today():
+async def query_all_tasks_completed():
     async with async_session_maker() as session:
         query_select = db.select(db.func.count(Task.id)).where(
             (Task.date == date.today()) &
@@ -52,6 +52,15 @@ async def query_all_tasks_for_today():
         result = await session.execute(query_select)
         user_data = result.scalar()
         return user_data
+
+
+async def query_all_tasks():
+    async with async_session_maker() as session:
+        query_select = db.select(Task)
+        result = await session.execute(query_select)
+        user_data = result.scalars().all()
+        return user_data
+
 
 async def query_change_status(id: int):
     async with async_session_maker() as session:

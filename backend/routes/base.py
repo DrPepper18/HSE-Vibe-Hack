@@ -19,6 +19,12 @@ async def get_health():
     return {"health": "ok"}
 
 
+@router.get("/tasks")
+async def get_all_tasks():
+    result = await query_all_tasks()
+    return {"result": result}
+
+
 @router.post("/split")
 async def split_text_into_tasks(request: SplitRequest):
     result = json.loads(get_tasks(text=request.text))
@@ -28,7 +34,7 @@ async def split_text_into_tasks(request: SplitRequest):
 
 @router.get("/energy")
 async def get_user_energy():
-    result = await query_all_tasks_for_today()
+    result = await query_all_tasks_completed()
     return {"energy": result}
 
 
