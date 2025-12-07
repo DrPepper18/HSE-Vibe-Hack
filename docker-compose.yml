@@ -23,6 +23,8 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      YANDEX_API_KEY: ${YANDEX_API_KEY}
+      FOLDER_ID: ${FOLDER_ID}
     ports:
       - "8000:8000"
     depends_on:
