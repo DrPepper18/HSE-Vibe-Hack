@@ -3,27 +3,26 @@ import { Send, Calendar, Clock, CheckCircle, Plus, X, Brain, Coffee, Zap, Trophy
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'ai',
-      content: 'Привет, прокрастинатор! 😎 Я твой AI-друг по борьбе с ленью! Расскажи, что хочешь сделать, пока TikTok не съел весь твой день!',
-      timestamp: new Date(Date.now() - 300000)
-    }
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
   const [tasks, setTasks] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showAddTask, setShowAddTask] = useState(false);
   const [modalInitialDate, setModalInitialDate] = useState(new Date());
   const [energyLevel, setEnergyLevel] = useState(0);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pulseKey, setPulseKey] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(typeof window !== 'undefined' ? window.innerWidth < 465 : false);
+  // Navigation state (нужен для Navigation)
+  const [currentPage, setCurrentPage] = useState('home');
+
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 465);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // avoid unnecessary re-renders: stable callbacks, memoized derived values, timeout cleanup
   const timeoutsRef = useRef(new Set());
-
+  
   const generateAIResponse = useCallback((userMessage) => {
     const responses = [
       'ОГО! Ты реально хочешь это сделать? Ладно, я поверю! 🤯',
@@ -68,42 +67,6 @@ export default function App() {
     setPulseKey(prev => prev + 1);
   }, [addTask]);
 
-  const handleSendMessage = useCallback(() => {
-    if (!inputMessage.trim()) return;
-
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: inputMessage,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-
-    const timeoutId = setTimeout(() => {
-      const aiResponse = {
-        id: Date.now() + 1,
-        type: 'ai',
-        content: generateAIResponse(inputMessage),
-        timestamp: new Date()
-      };
-
-      const taskMatch = inputMessage.match(/(?:сделать|выполнить|запланировать|нужно|хочу|надо)\s+(.+?)(?:\s+в\s+(\d{1,2}:\d{2}))?/i);
-      if (taskMatch) {
-        const taskTitle = taskMatch[1] || inputMessage;
-        const taskTime = taskMatch[2] || '';
-        addTask(taskTitle, taskTime, selectedDate);
-        setEnergyLevel(prev => Math.min(100, prev + 5));
-        setPulseKey(prev => prev + 1);
-      }
-      setMessages(prev => [...prev, aiResponse]);
-      timeoutsRef.current.delete(timeoutId);
-    }, 1000);
-
-    timeoutsRef.current.add(timeoutId);
-  }, [inputMessage, generateAIResponse, addTask, selectedDate]);
-
   useEffect(() => {
     return () => {
       for (const t of timeoutsRef.current) {
@@ -133,14 +96,110 @@ export default function App() {
   const formatTime = useCallback((date) => date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), []);
 
   const getEnergyStatus = useCallback(() => {
-    if (energyLevel >= 90) return 'ЧЕМПИОН! 🏆';
-    if (energyLevel >= 70) return 'ГОРЯЧИЙ! 🔥';
-    if (energyLevel >= 50) return 'НАДО КОФЕ! ☕';
-    if (energyLevel >= 30) return 'СПАСАЙТЕ! 😵';
+  const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+  
+    if (progress >= 90) return 'ЧЕМПИОН! 🏆';
+    if (progress >= 70) return 'ГОРЯЧИЙ! 🔥';
+    if (progress >= 50) return 'НАДО КОФЕ! ☕';
+    if (progress >= 30) return 'СПАСАЙТЕ! 😵';
+    if (progress > 0) return 'НАЧАЛО! 💪';
     return 'Zzz... 💤';
-  }, [energyLevel]);
+  }, [completedTasks, totalTasks]);
 
-  // Вынесенный модальный компонент — вводы локальные чтобы не дергать parent state
+    const Chat = React.memo(({ addTask, selectedDate }) => {
+    const [messagesLocal, setMessagesLocal] = useState([
+      {
+        id: 1,
+        type: 'ai',
+        content: 'Привет, прокрастинатор! 😎 Я твой AI-друг по борьбе с ленью! Расскажи, что хочешь сделать, пока TikTok не съел весь твой день!',
+        timestamp: new Date(Date.now() - 300000)
+      }
+    ]);
+    const localTimeouts = useRef(new Set());
+    const chatRef = useRef(null);
+
+    const localGenerateAIResponse = useCallback((userMessage) => {
+      const responses = [
+        'ОГО! Ты реально хочешь это сделать? Ладно, я поверю! 🤯',
+        'Когда ты сделаешь это? Сейчас или когда мама начнет кричать "УЖИН!"? 😅',
+        'БРО! Это же элементарно! Давай разобьем на микрозадачи, как TikTok-ролики!',
+        'Я уже вижу твое лицо, когда ты поймешь, что сделал всё! 🏆',
+        'Ты как тот парень из мемов: "Планирую весь день" vs "Лежу в TikTok" 🤡',
+        'Отлично! Только не забудь потом сказать "Я же говорил, что справлюсь!" 💪',
+        'Когда ты сделаешь это, я сделаю тебе виртуальный кофе! ☕ (но ты сам купишь настоящий)',
+        'Это как уровень в игре! Сделаешь - ачивка "Я не лентяй"! 🎮'
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }, []);
+
+    const send = useCallback((msg) => {
+      const userMsg = { id: Date.now(), type: 'user', content: msg, timestamp: new Date() };
+      setMessagesLocal(prev => [...prev, userMsg]);
+
+      const tid = setTimeout(() => {
+        const ai = { id: Date.now() + 1, type: 'ai', content: localGenerateAIResponse(msg), timestamp: new Date() };
+        // распознаём задачу в тексте и вызываем addTask (это обновит App только если нужно)
+        const taskMatch = msg.match(/(?:сделать|выполнить|запланировать|нужно|хочу|надо)\s+(.+?)(?:\s+в\s+(\d{1,2}:\d{2}))?/i);
+        if (taskMatch) {
+          const taskTitle = taskMatch[1] || msg;
+          const taskTime = taskMatch[2] || '';
+          addTask(taskTitle, taskTime, selectedDate);
+        }
+        setMessagesLocal(prev => [...prev, ai]);
+        localTimeouts.current.delete(tid);
+      }, 800);
+
+      localTimeouts.current.add(tid);
+    }, [addTask, selectedDate, localGenerateAIResponse]);
+
+    useEffect(() => {
+      return () => {
+        for (const t of localTimeouts.current) clearTimeout(t);
+        localTimeouts.current.clear();
+      };
+    }, []);
+
+    useEffect(() => {
+      if (!chatRef.current) return;
+      const timer = setTimeout(() => {
+        try {
+          chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
+        } catch (e) {
+          chatRef.current.scrollTop = chatRef.current.scrollHeight;
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }, [messagesLocal]);
+
+    return (
+      <div>
+        <div ref={chatRef} className="h-80 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-white to-red-50">
+          <AnimatePresence>
+            {messagesLocal.map(m => (
+              <motion.div
+                key={m.id}
+                className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.25 }}
+              >
+                <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl border-2 ${m.type === 'user' ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-br-none border-green-500 shadow-lg' : 'bg-gradient-to-r from-orange-400 to-red-500 text-white rounded-bl-none border-orange-500 shadow-lg'}`}>
+                  <p className="text-sm font-bold">{m.content}</p>
+                  <p className="text-xs opacity-90 mt-1">{m.timestamp.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</p>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+        <div className="p-6 border-t-4 border-red-200 bg-red-50">
+          <ChatInput onSend={send} />
+        </div>
+      </div>
+    );
+  });
+
+
   const AddTaskModal = React.memo(({ initialDate, onClose, onSubmit }) => {
     const [title, setTitle] = useState('');
     const [time, setTime] = useState('');
@@ -234,6 +293,61 @@ export default function App() {
           </div>
         </motion.div>
       </motion.div>
+    );
+  });
+
+  const ChatInput = React.memo(({ onSend }) => {
+    const [text, setText] = useState('');
+    const composingRef = useRef(false);
+    const lastSendRef = useRef(0);
+
+    const handleLocalSend = useCallback((msg) => {
+      const m = (typeof msg === 'string' ? msg : '').trim();
+      if (!m) return;
+      const now = Date.now();
+      if (now - lastSendRef.current < 300) return;
+      lastSendRef.current = now;
+      onSend(m);
+      setText('');
+    }, [onSend]);
+
+    return (
+      <div className="flex space-x-3">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionEnd={() => { composingRef.current = false; }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (composingRef.current) return;
+              handleLocalSend(e.currentTarget.value);
+            }
+          }}
+          placeholder="Напиши что-то вроде: 'нужно сделать дз'..."
+          className="flex-1 px-4 py-3 border-2 border-red-300 rounded-xl focus:ring-4 focus:ring-red-500/50 focus:border-red-500 outline-none bg-white/80 font-mono"
+        />
+        <motion.button
+          type="button"
+          onClick={() => handleLocalSend(text)}
+          disabled={!text.trim()}
+          className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          animate={{
+            boxShadow: text.trim() ? [
+              "0 4px 6px -1px rgba(249, 115, 22, 0.5)",
+              "0 10px 15px -3px rgba(249, 115, 22, 0.7)",
+              "0 4px 6px -1px rgba(249, 115, 22, 0.5)"
+            ] : "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+          }}
+          transition={{ duration: 1.5, repeat: text.trim() ? Infinity : 0 }}
+        >
+          <Send className="w-5 h-5" />
+        </motion.button>
+      </div>
     );
   });
 
@@ -345,7 +459,7 @@ export default function App() {
     >
       <motion.div
         className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 border-4 border-orange-300"
-        key={pulseKey}
+        key={isNarrow}
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -363,10 +477,10 @@ export default function App() {
           <motion.div
             className="text-xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent"
             animate={{
-              scale: energyLevel > 0 ? [1, 1.1, 1] : 1,
-              rotate: energyLevel > 0 ? [0, 5, -5, 0] : 0
+              scale: todayProgress > 0 ? [1, 1.1, 1] : 1,
+              rotate: todayProgress > 0 ? [0, 5, -5, 0] : 0
             }}
-            transition={{ duration: 0.5, repeat: energyLevel > 0 ? Infinity : 0 }}
+            transition={{ duration: 0.5, repeat: todayProgress > 0 ? Infinity : 0 }}
           >
             {getEnergyStatus()}
           </motion.div>
@@ -375,12 +489,13 @@ export default function App() {
           <motion.div
             className="h-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-500"
             initial={{ width: 0 }}
-           animate={{ width: `${todayProgress}%` }}
+            animate={{ width: `${todayProgress}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </div>
         <div className="text-center mt-2 text-sm text-gray-600">
-          {completedTasks} из {totalTasks} задач выполнено ({todayProgress}%)! Ты как тот чувак из мема: "Я же говорил, что справлюсь!" 😎
+          {completedTasks} из {totalTasks} задач выполнено ({todayProgress}%)! 
+          {todayProgress >= 50 ? ' Ты как тот чувак из мема: "Я же говорил, что справлюсь!" 😎' : ' Давай, ты можешь! 💪'}
         </div>
       </motion.div>
 
@@ -404,66 +519,8 @@ export default function App() {
             <p className="text-sm text-gray-600 mt-1">Он знает, когда ты прокрастинируешь! 😏</p>
           </div>
 
-          <div className="h-80 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-white to-red-50">
-            <AnimatePresence>
-              {messages.map((message) => (
-                <motion.div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl border-2 ${
-                      message.type === 'user'
-                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-br-none border-green-500 shadow-lg'
-                        : 'bg-gradient-to-r from-orange-400 to-red-500 text-white rounded-bl-none border-orange-500 shadow-lg'
-                    }`}
-                  >
-                    <p className="text-sm font-bold">{message.content}</p>
-                    <p className="text-xs opacity-90 mt-1">
-                      {message.timestamp.toLocaleTimeString('ru-RU', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
 
-          <div className="p-6 border-t-4 border-red-200 bg-red-50">
-            <div className="flex space-x-3">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Напиши что-то вроде: 'нужно сделать дз по пятерке в 15:00'..."
-                className="flex-1 px-4 py-3 border-2 border-red-300 rounded-xl focus:ring-4 focus:ring-red-500/50 focus:border-red-500 outline-none bg-white/80 font-mono"
-              />
-              <motion.button
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim()}
-                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                animate={{
-                  boxShadow: inputMessage.trim() ? [
-                    "0 4px 6px -1px rgba(249, 115, 22, 0.5)",
-                    "0 10px 15px -3px rgba(249, 115, 22, 0.7)",
-                    "0 4px 6px -1px rgba(249, 115, 22, 0.5)"
-                  ] : "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-                }}
-                transition={{ duration: 1.5, repeat: inputMessage.trim() ? Infinity : 0 }}
-              >
-                <Send className="w-5 h-5" />
-              </motion.button>
-            </div>
-          </div>
+          <Chat addTask={addTask} selectedDate={selectedDate} />
         </motion.div>
 
         <motion.div
@@ -782,11 +839,11 @@ export default function App() {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-3">
             <AnimatePresence>
               {days.map((day, index) => {
                 if (!day) {
-                  return <div key={index} className="h-20"></div>;
+                  return <div key={index} className={isNarrow ? "h-10" : "h-20"}></div>;
                 }
 
                 const dayTasks = getCalendarTasks(day);
@@ -795,7 +852,7 @@ export default function App() {
                 return (
                   <motion.div
                     key={day.toDateString()}
-                    className={`h-20 p-1 rounded-lg border-2 cursor-pointer ${
+                    className={`${isNarrow ? "h-10" : "h-20"} p-1 rounded-lg border-2 cursor-pointer ${
                       isToday
                         ? 'bg-gradient-to-r from-yellow-200 to-orange-300 border-yellow-400'
                         : 'bg-white/70 border-orange-200'
@@ -819,9 +876,11 @@ export default function App() {
                     }`}>
                       {day.getDate()}
                     </div>
-                    <div className="text-xs text-orange-600 text-center font-bold">
-                      {dayTasks.length} задач
-                    </div>
+                    {!isNarrow && (
+                      <div className="text-xs text-orange-600 text-center font-bold">
+                        {dayTasks.length} задач
+                      </div>
+                    )}
                     {dayTasks.slice(0, 2).map(task => (
                       <div key={task.id} className="text-[10px] text-gray-700 truncate">
                         • {task.title}
