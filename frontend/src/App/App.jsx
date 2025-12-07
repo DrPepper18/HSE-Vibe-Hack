@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Send, Calendar, Clock, CheckCircle, Plus, X, Brain, Coffee, Zap, Trophy, Home, List, CalendarDays, Users, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import orangeIcon from '../assets/Orange SVG Icon.svg';
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
@@ -1086,7 +1087,7 @@ export default function App() {
       {/* Floating Add Task Button */}
       <motion.button
         onClick={() => { setModalInitialDate(new Date()); setShowAddTask(true); }}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-full shadow-2xl z-40"
+        className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-full shadow-2xl z-40 flex items-center justify-center"
         whileHover={{ scale: 1.1, rotate: 10 }}
         whileTap={{ scale: 0.9 }}
         animate={{
@@ -1098,7 +1099,7 @@ export default function App() {
         }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <Plus className="w-8 h-8 text-green-500" />
+        <img src={orangeIcon} alt="Add task" className="w-8 h-8" />
       </motion.button>
     </div>
   );
